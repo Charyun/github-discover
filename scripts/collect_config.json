@@ -1,0 +1,36 @@
+{
+  "industries": {
+    "life": {
+      "keywords": ["home automation", "recipe manager", "travel planner", "personal finance"],
+      "min_stars": 500
+    },
+    "productivity": {
+      "keywords": ["project management", "note taking", "knowledge base", "task manager", "wiki"],
+      "min_stars": 500
+    },
+    "content": {
+      "keywords": ["video editor", "graphic design", "podcast", "writing tool", "blog platform"],
+      "min_stars": 500
+    },
+    "business": {
+      "keywords": ["ecommerce", "crm", "accounting", "invoicing", "pos system"],
+      "min_stars": 500
+    },
+    "education": {
+      "keywords": ["language learning", "flashcard", "lms", "coding education", "spaced repetition"],
+      "min_stars": 500
+    },
+    "health": {
+      "keywords": ["fitness tracker", "mental health", "habit tracker", "meditation", "health monitoring"],
+      "min_stars": 300
+    },
+    "smarthome": {
+      "keywords": ["home assistant", "smart home", "iot", "home monitoring", "energy monitor"],
+      "min_stars": 300
+    },
+    "gaming": {
+      "keywords": ["game engine", "game development", "emulator", "retro gaming"],
+      "min_stars": 500
+    }
+  }
+}
