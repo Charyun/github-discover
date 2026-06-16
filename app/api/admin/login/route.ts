@@ -3,7 +3,7 @@ import { getCloudflareContext } from '@opennextjs/cloudflare'
 
 export async function POST(req: NextRequest) {
   const { password } = await req.json() as { password?: string }
-  const cfEnv = getCloudflareContext().env as Record<string, string>
+  const cfEnv = getCloudflareContext().env as unknown as Record<string, string>
   const adminPassword = cfEnv.ADMIN_PASSWORD
   const adminSecret = cfEnv.ADMIN_SECRET
 

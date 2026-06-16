@@ -7,7 +7,7 @@ const COOKIE_MAX_AGE = 7 * 24 * 60 * 60
 
 function getCfSecret(key: string): string {
   try {
-    const env = getCloudflareContext().env as Record<string, string>
+    const env = getCloudflareContext().env as unknown as Record<string, string>
     return env[key] ?? ''
   } catch {
     return process.env[key] ?? ''
