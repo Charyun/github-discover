@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getCloudflareContext } from '@opennextjs/cloudflare'
 
 export const dynamic = 'force-dynamic'
 
 export async function POST(req: NextRequest) {
   const { password } = await req.json() as { password?: string }
-  const cfEnv = getCloudflareContext().env as unknown as Record<string, string>
-  const adminPassword = cfEnv.ADMIN_PASSWORD
-  const adminSecret = cfEnv.ADMIN_SECRET
+  const adminPassword = process.env.ADMIN_PASSWORD
+  const adminSecret = process.env.ADMIN_SECRET
 
   if (!adminPassword || !adminSecret) {
     return NextResponse.json({ error: 'Server misconfigured' }, { status: 500 })

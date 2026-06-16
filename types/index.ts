@@ -3,7 +3,8 @@ export interface Industry {
   name_zh: string
   name_en: string
   icon: string
-  order: number
+  /** Renamed from `order` (PostgreSQL reserved word). */
+  sort_order: number
 }
 
 export interface Scene {
@@ -41,19 +42,28 @@ export interface Project {
   published_at: string | null
 }
 
+/**
+ * Wire format for pending projects. raw_data is a JSON object (PostgreSQL
+ * JSONB returns parsed values; on the API input side the webhook handler
+ * does JSON.parse before calling upsertPendingProjects).
+ */
 export interface PendingProject {
   github_full_name: string
-  raw_data: string
+  raw_data: Record<string, unknown>
   auto_score: number
   collected_at: string
   status: 'pending' | 'approved' | 'rejected'
 }
 
+/**
+ * Raw row from the projects table. JSONB columns are returned by pg as
+ * already-parsed JS values, so the JSON fields are `unknown[]` here.
+ */
 export type ProjectRow = Omit<Project, 'tags' | 'screenshots' | 'alternative_to' | 'target_users' | 'use_cases' | 'features'> & {
-  tags: string
-  screenshots: string
-  alternative_to: string
-  target_users: string
-  use_cases: string
-  features: string
+  tags: unknown[]
+  screenshots: unknown[]
+  alternative_to: unknown[]
+  target_users: unknown[]
+  use_cases: unknown[]
+  features: unknown[]
 }

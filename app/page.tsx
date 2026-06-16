@@ -1,17 +1,15 @@
 export const dynamic = 'force-dynamic'
 
-import { getCloudflareEnv } from '@/lib/cloudflare'
 import { getIndustries, getTopProjects, getRecentProjects } from '@/lib/db'
 import { IndustryGrid } from '@/components/industry-grid'
 import { ProjectCard } from '@/components/project-card'
 import { SiteShell } from '@/components/site-shell'
 
 export default async function HomePage() {
-  const { DB } = getCloudflareEnv()
   const [industries, topProjects, recentProjects] = await Promise.all([
-    getIndustries(DB),
-    getTopProjects(DB, 8),
-    getRecentProjects(DB, 7, 6),
+    getIndustries(),
+    getTopProjects(8),
+    getRecentProjects(7, 6),
   ])
 
   return (

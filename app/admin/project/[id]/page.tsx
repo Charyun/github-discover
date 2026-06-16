@@ -2,29 +2,22 @@ export const dynamic = 'force-dynamic'
 
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { getCloudflareEnv } from '@/lib/cloudflare'
-import { getIndustries } from '@/lib/db'
+import { getIndustries, getPendingProject, getAllScenes } from '@/lib/db'
 import { ApproveForm } from './approve-form'
 
 export default async function AdminProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const githubFullName = decodeURIComponent(id)
-  const { DB } = getCloudflareEnv()
 
-  const [industries, pending, scenesResult] = await Promise.all([
-    getIndustries(DB),
-    DB.prepare("SELECT * FROM pending_queue WHERE github_full_name = ?")
-      .bind(githubFullName)
-      .first<{ github_full_name: string; raw_data: string; auto_score: number }>(),
-    DB.prepare('SELECT * FROM scenes').all<{ id: string; industry_id: string; name_zh: string }>(),
+  const [industries, pending, scenes] = await Promise.all([
+    getIndustries(),
+    getPendingProject(githubFullName),
+    getAllScenes(),
   ])
 
   if (!pending) notFound()
 
-  const scenes = scenesResult.results
-
-  let raw: Record<string, unknown> = {}
-  try { raw = JSON.parse(pending.raw_data) } catch {}
+  const raw = (pending.raw_data ?? {}) as Record<string, unknown>
 
   const initialData = {
     display_name: (raw.name as string) ?? '',

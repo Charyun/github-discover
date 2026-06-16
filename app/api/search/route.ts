@@ -1,5 +1,4 @@
 import { NextRequest } from 'next/server'
-import { getCloudflareEnv } from '@/lib/cloudflare'
 import { searchProjects, getPublishedProjects } from '@/lib/db'
 
 export async function GET(req: NextRequest) {
@@ -7,11 +6,9 @@ export async function GET(req: NextRequest) {
   const q = searchParams.get('q')?.trim()
   const industryId = searchParams.get('industry') || undefined
 
-  const { DB } = getCloudflareEnv()
-
   const projects = q
-    ? await searchProjects(DB, q, { industryId, limit: 30 })
-    : await getPublishedProjects(DB, { industryId, limit: 30 })
+    ? await searchProjects(q, { industryId, limit: 30 })
+    : await getPublishedProjects({ industryId, limit: 30 })
 
   return Response.json({ projects, query: q ?? '' })
 }

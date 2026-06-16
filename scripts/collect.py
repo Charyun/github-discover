@@ -12,8 +12,8 @@ from datetime import datetime, timedelta, timezone
 import requests
 
 GITHUB_TOKEN = os.environ["GITHUB_TOKEN"]
-WEBHOOK_URL = os.environ["COLLECT_WEBHOOK_URL"]
-WEBHOOK_SECRET = os.environ["COLLECT_WEBHOOK_SECRET"]
+WEBHOOK_URL = os.environ["WEBHOOK_URL"]
+WEBHOOK_SECRET = os.environ["WEBHOOK_SECRET"]
 
 HEADERS = {
     "Authorization": f"Bearer {GITHUB_TOKEN}",

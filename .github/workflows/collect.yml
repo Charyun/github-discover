@@ -30,8 +30,8 @@ jobs:
         run: python scripts/collect.py
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
-          COLLECT_WEBHOOK_URL: ${{ secrets.COLLECT_WEBHOOK_URL }}
-          COLLECT_WEBHOOK_SECRET: ${{ secrets.COLLECT_WEBHOOK_SECRET }}
+          WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
+          WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
         if: ${{ github.event.inputs.dry_run != 'true' }}
 
       - name: Dry run (print config only)

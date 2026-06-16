@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getCloudflareEnv } from '@/lib/cloudflare'
 import { rejectPendingProject } from '@/lib/db'
 
 export async function POST(req: NextRequest) {
@@ -8,8 +7,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'github_full_name required' }, { status: 400 })
   }
 
-  const { DB } = getCloudflareEnv()
-  await rejectPendingProject(DB, github_full_name)
+  await rejectPendingProject(github_full_name)
 
   return NextResponse.json({ ok: true })
 }

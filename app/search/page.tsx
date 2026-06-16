@@ -1,6 +1,5 @@
 export const dynamic = 'force-dynamic'
 
-import { getCloudflareEnv } from '@/lib/cloudflare'
 import { searchProjects } from '@/lib/db'
 import { ProjectCard } from '@/components/project-card'
 import { SearchBar } from '@/components/search-bar'
@@ -14,8 +13,7 @@ export default async function SearchPage({
   const { q } = await searchParams
   const query = q?.trim() ?? ''
 
-  const { DB } = getCloudflareEnv()
-  const projects = query ? await searchProjects(DB, query, { limit: 30 }) : []
+  const projects = query ? await searchProjects(query, { limit: 30 }) : []
 
   return (
     <SiteShell>

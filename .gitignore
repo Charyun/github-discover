@@ -41,6 +41,12 @@ yarn-error.log*
 .open-next/
 .wrangler/
 
+# edgeone pages build output
+.edgeone/
+
+# local backup of the previous Cloudflare version
+/openhub-bak/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

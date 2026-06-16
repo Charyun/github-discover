@@ -2,7 +2,6 @@ export const dynamic = 'force-dynamic'
 
 import { notFound } from 'next/navigation'
 import { Star, ExternalLink, GitBranch } from 'lucide-react'
-import { getCloudflareEnv } from '@/lib/cloudflare'
 import { getProjectBySlug } from '@/lib/db'
 import { DeployBadge } from '@/components/deploy-badge'
 import { Badge } from '@/components/ui/badge'
@@ -12,8 +11,7 @@ import { SiteShell } from '@/components/site-shell'
 
 export default async function ProjectPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
-  const { DB } = getCloudflareEnv()
-  const project = await getProjectBySlug(DB, slug)
+  const project = await getProjectBySlug(slug)
   if (!project) notFound()
 
   return (

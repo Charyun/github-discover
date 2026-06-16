@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getCloudflareEnv } from '@/lib/cloudflare'
+import { syncProjectStats } from '@/lib/db'
 import { verifyHmacSha256 } from '@/lib/hmac'
 
 interface StatUpdate {
@@ -11,7 +11,7 @@ interface StatUpdate {
 export async function POST(req: NextRequest) {
   const body = await req.text()
   const sig = req.headers.get('x-webhook-signature') ?? ''
-  const secret = process.env.COLLECT_WEBHOOK_SECRET ?? ''
+  const secret = process.env.WEBHOOK_SECRET ?? ''
 
   const valid = await verifyHmacSha256(secret, body, sig)
   if (!valid) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -21,9 +21,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, updated: 0 })
   }
 
-  const { DB } = getCloudflareEnv()
-  const stmt = DB.prepare('UPDATE projects SET stars = ?, updated_at = ? WHERE github_full_name = ?')
-  await DB.batch(updates.map(u => stmt.bind(u.stars, u.updated_at, u.github_full_name)))
+  await syncProjectStats(updates)
 
   return NextResponse.json({ ok: true, updated: updates.length })
 }

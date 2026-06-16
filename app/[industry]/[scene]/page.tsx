@@ -2,7 +2,6 @@ export const dynamic = 'force-dynamic'
 
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { getCloudflareEnv } from '@/lib/cloudflare'
 import { getIndustries, getScenesByIndustry, getPublishedProjects } from '@/lib/db'
 import { ProjectCard } from '@/components/project-card'
 import { Badge } from '@/components/ui/badge'
@@ -14,11 +13,10 @@ export default async function ScenePage({
   params: Promise<{ industry: string; scene: string }>
 }) {
   const { industry: industryId, scene: sceneId } = await params
-  const { DB } = getCloudflareEnv()
   const [industries, scenes, projects] = await Promise.all([
-    getIndustries(DB),
-    getScenesByIndustry(DB, industryId),
-    getPublishedProjects(DB, { industryId, sceneId, limit: 40 }),
+    getIndustries(),
+    getScenesByIndustry(industryId),
+    getPublishedProjects({ industryId, sceneId, limit: 40 }),
   ])
 
   const industry = industries.find(i => i.id === industryId)

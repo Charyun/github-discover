@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
-import { getCloudflareEnv } from '@/lib/cloudflare'
 import { approveProject } from '@/lib/db'
 import type { Project } from '@/types'
 
@@ -12,8 +11,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'github_full_name required' }, { status: 400 })
   }
 
-  const { DB } = getCloudflareEnv()
-  await approveProject(DB, github_full_name, projectData)
+  await approveProject(github_full_name, projectData)
 
   const slug = github_full_name.replace('/', '--')
   revalidatePath(`/project/${slug}`)

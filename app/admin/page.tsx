@@ -1,15 +1,13 @@
 export const dynamic = 'force-dynamic'
 
 import Link from 'next/link'
-import { getCloudflareEnv } from '@/lib/cloudflare'
 import { getPendingQueue } from '@/lib/db'
 import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 
 export default async function AdminPage() {
-  const { DB } = getCloudflareEnv()
-  const queue = await getPendingQueue(DB, 50)
+  const queue = await getPendingQueue(50)
 
   return (
     <div className="space-y-4">
@@ -24,8 +22,7 @@ export default async function AdminPage() {
 
       <div className="space-y-2">
         {queue.map(item => {
-          let raw: { name?: string; stargazers_count?: number; language?: string } = {}
-          try { raw = JSON.parse(item.raw_data) } catch {}
+          const raw = (item.raw_data ?? {}) as { name?: string; stargazers_count?: number; language?: string }
           return (
             <Card key={item.github_full_name}>
               <CardContent className="p-4 flex items-center justify-between gap-4">

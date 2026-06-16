@@ -1,7 +1,6 @@
 export const dynamic = 'force-dynamic'
 
 import type { MetadataRoute } from 'next'
-import { getCloudflareEnv } from '@/lib/cloudflare'
 import { getAllPublishedSlugs, getIndustries } from '@/lib/db'
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -11,12 +10,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   let industries: { id: string }[] = []
 
   try {
-    const { DB } = getCloudflareEnv()
-    const [s, i] = await Promise.all([getAllPublishedSlugs(DB), getIndustries(DB)])
+    const [s, i] = await Promise.all([getAllPublishedSlugs(), getIndustries()])
     slugs = s
     industries = i
   } catch {
-    // build-time: no CF context available
+    // build-time: DB not available
   }
 
   const staticPages: MetadataRoute.Sitemap = [
