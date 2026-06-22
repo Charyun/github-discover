@@ -23,7 +23,7 @@ export default function AdminLoginPage() {
         body: JSON.stringify({ password }),
       })
       if (res.ok) {
-        router.push('/admin')
+        window.location.href = '/admin'
       } else {
         const data = await res.json().catch(() => ({}))
         setError(data.error ? `${res.status}: ${data.error}` : `Error ${res.status}`)
