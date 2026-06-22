@@ -1,54 +1,72 @@
-# OpenHub 部署文档（EdgeOne Pages + TencentDB PostgreSQL）
+# OpenHub 部署文档（EdgeOne Pages + Supabase）
 
-## 前置条件
+## 架构
 
-- 腾讯云账号（需要 EdgeOne Pages + TencentDB for PostgreSQL 权限）
-- 腾讯云账号下的 **API Token**（在 EdgeOne 控制台 → API Tokens 生成，权限选 Pages Deploy）
-- Node.js 22+，npm 已安装
-- EdgeOne CLI：项目本地 `node_modules/.bin/edgeone`（`npm install` 自动装）
-- **Gitee** 账号 + 仓库（用 Gitee Go 做 CI/CD）
-- 腾讯云 PostgreSQL 实例（公网可达，IP 白名单已开）
-- EdgeOne Pages 项目（已创建并绑定 Gitee 仓库）
+```
+[GitHub]──push──▶[GitHub Actions]──deploy──▶[EdgeOne Pages]
+                                          │
+[GitHub Actions]──定时──▶collect.py──POST──▶[/api/webhook/collect]
+                                          │
+                                          ▼
+                                    [Supabase PG]
+                                  (ap-northeast-1)
+```
+
+| 组件 | 作用 |
+|------|------|
+| **GitHub** | 代码仓库（`Charyun/github-discover`）+ CI/CD 平台 |
+| **EdgeOne Pages** | Next.js 托管（国内 CDN 边缘节点） |
+| **Supabase** | 托管 PostgreSQL 数据库 |
+| **GitHub Actions** | 自动化：push 触发部署 + 每日采集 |
 
 ---
 
-## 一、TencentDB for PostgreSQL 准备
+## 前置条件
 
-### 1. 创建 PostgreSQL 实例
+- GitHub 账号（仓库 + Secrets）
+- 腾讯云账号（EdgeOne Pages 部署）
+- Supabase 账号（免费层即可）
+- Node.js 22+（本地开发）
 
-在 [腾讯云控制台](https://console.cloud.tencent.com/postgres) → **新建实例**：
+---
 
-- 计费模式：按量计费（个人项目用完后可释放）
-- 规格：1核 1GB 入门款即可
-- 地域：建议选离 EdgeOne 边缘节点近的（广州/上海/北京）
-- 网络：VPC + **开通公网访问**（需 EdgeOne 跨网访问）
-- 数据库版本：PostgreSQL 16
-- 认证：设置 root 密码
+## 一、Supabase 数据库准备
 
-### 2. 创建数据库
+### 1. 创建项目
 
-实例详情 → **Databases** → 新建库：
+https://supabase.com/dashboard → **New Project**：
+
+| 字段 | 值 |
+|------|-----|
+| Name | `openhub` |
+| Database Password | 生成强密码并保存 |
+| Region | **Singapore** 或 **Tokyo**（按就近选） |
+| Plan | Free |
+
+### 2. 拿到连接串
+
+Project Settings → **Database** → **Connection string** → **URI**：
 
 ```
-Database name: openhub
-Owner: postgres
+postgresql://postgres.[PROJECT-REF]:[PASSWORD]@aws-0-[REGION].pooler.supabase.com:6543/postgres
 ```
 
-### 3. 配置白名单
+**端口必须用 6543**（Transaction pooler，适合 serverless / EdgeOne Pages）。
 
-实例详情 → **Security Group / 白名单** → 添加 EdgeOne Pages 出口 IP 段，或临时开 `0.0.0.0/0`（生产收紧）。
+### 3. 初始化 schema 和 seed
 
-### 4. 初始化 schema 和基础数据
+左侧 → **SQL Editor** → New query。依次执行三条 SQL（用同一个 query 窗口，每次 Run 前清空）：
 
-本地用 `psql` 连接：
-
-```bash
-export DATABASE_URL='postgresql://user:pass@host:5432/openhub'
-psql "$DATABASE_URL" -f scripts/schema.sql
-psql "$DATABASE_URL" -f scripts/seed.sql
+**第 1 步**：启用扩展
+```sql
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
 ```
 
-`seed.sql` 写入 8 个行业 + 25 个场景分类。
+**第 2 步**：建表（复制 `scripts/schema.sql` 全部内容）
+
+**第 3 步**：插入种子数据（复制 `scripts/seed.sql` 全部内容）
+
+执行完后 Table Editor 应看到：`industries` 8 行、`scenes` 25 行。
 
 ---
 
@@ -62,17 +80,15 @@ npm install
 
 ### 2. 配置环境变量
 
-复制 `.env.example`（如有）→ `.env.local`：
+创建 `.env.local`（**已被 `.gitignore` 忽略**）：
 
 ```bash
-DATABASE_URL=postgresql://user:pass@localhost:5432/openhub_dev
+DATABASE_URL=postgresql://postgres.[REF]:[PASSWORD]@aws-0-[REGION].pooler.supabase.com:6543/postgres
 ADMIN_PASSWORD=dev-password
 ADMIN_SECRET=dev-secret-32chars-min-length-please
 WEBHOOK_SECRET=dev-webhook-secret
 NEXT_PUBLIC_BASE_URL=http://localhost:3000
 ```
-
-EdgeOne CLI 会自动加载 `.env.local` 到 dev 运行时。
 
 ### 3. 启动
 
@@ -87,150 +103,138 @@ npm run dev
 
 ### 1. 创建项目
 
-在 [EdgeOne 控制台](https://console.cloud.tencent.com/edgeone) → **Pages** → **Create Project**：
+https://console.cloud.tencent.com/edgeone/pages → **Create Project**：
 
-- 接入方式：**Connect to Gitee**（推荐）
-- 选择仓库：`<your-gitee-username>/openhub`
-- 框架：Next.js（自动识别）
-- 构建命令：`npm run build`（默认）
-- 输出目录：`.next`（默认）
-- Node.js 版本：22
+| 字段 | 值 |
+|------|-----|
+| 项目名 | `openhub` |
+| 接入方式 | **手动部署**（不绑定 GitHub，由 GitHub Actions 调 API 部署） |
+| 框架 | Next.js（自动识别） |
+| 构建命令 | `npm run build` |
+| 输出目录 | `.next` |
+| Node.js 版本 | 22 |
 
-### 2. 设置环境变量
+### 2. 拿到 API Token
 
-EdgeOne 控制台 → 项目 → **Environment Variables** → Production：
+Project Settings → **API Tokens** → **Generate**（权限选 **Pages Deploy**）。
 
-| 变量名 | 值 | 说明 |
-|--------|-----|------|
-| `DATABASE_URL` | `postgresql://...` | TencentDB 连接串 |
-| `ADMIN_PASSWORD` | 强密码 | Admin 登录密码 |
-| `ADMIN_SECRET` | 32+ 随机字符串 | Cookie session 值 |
-| `WEBHOOK_SECRET` | 随机字符串 | HMAC 签名密钥 |
-| `NEXT_PUBLIC_BASE_URL` | `https://你的域名.edgeone.app` | 生产域名 |
+复制 token，备用。
 
-生成随机字符串：
+### 3. 设置环境变量
 
-```bash
-openssl rand -hex 16
-```
+项目 → **Environment Variables** → Production：
 
----
-
-## 四、部署
-
-### 方式一：Gitee Go 自动部署（推荐）
-
-每次 push 到 Gitee 仓库的 `main` 分支，`.gitee-ci/build.yml` 流水线自动触发：
-
-1. **Gitee 仓库设置 → Webhooks**：添加 Gitee Go 的 webhook URL（首次启用流水线时显示）
-2. **Gitee 仓库 → Settings → Secrets**：添加 `EDGEONE_API_TOKEN`
-3. **启用流水线**：Gitee 仓库 → **Pipelines** → **Gitee Go** → 启用并选择 `.gitee-ci/build.yml`
-
-之后 `git push origin main` → 流水线跑通 → EdgeOne Pages 自动部署。
-
-需要 1 个 Gitee Secret：`EDGEONE_API_TOKEN`（在 EdgeOne 控制台 → API Tokens 生成，权限选 Pages Deploy）。
-
-### 方式二：手动部署
-
-```bash
-npx edgeone deploy
-# 或预览：
-npx edgeone deploy --preview
-```
-
-需要本地设 2 个环境变量：
-
-```bash
-export EDGEONE_API_TOKEN=<从 EdgeOne 控制台拿>
-export EDGEONE_PROJECT_NAME=openhub
-```
+| 变量 | 值 |
+|------|-----|
+| `DATABASE_URL` | Supabase 连接串（同本地 `.env.local`） |
+| `ADMIN_PASSWORD` | 强密码 |
+| `ADMIN_SECRET` | 32+ 随机字符串 |
+| `WEBHOOK_SECRET` | 32+ 随机字符串（**和 GitHub Secret 完全相同**） |
+| `NEXT_PUBLIC_BASE_URL` | `https://你的域名.edgeone.app` |
 
 ---
 
-## 五、验证
+## 四、GitHub 仓库配置
 
-部署完成后访问你的 EdgeOne Pages 域名，逐项确认：
+### 1. 推代码
 
-- [ ] 首页正常显示（行业分类、空的推荐区域）
-- [ ] `/sitemap.xml` 有内容
-- [ ] 访问 `/admin` 自动跳转到 `/admin/login`
-- [ ] 用 `ADMIN_PASSWORD` 登录成功，跳转到待审核队列
-- [ ] 待审核列表为空（正常，还没采集）
+```bash
+git remote add origin https://github.com/Charyun/github-discover.git
+git push -u origin main
+```
 
----
-
-## 六、配置 GitHub Actions 数据采集（可选）
-
-> 即使主仓库在 Gitee，采集脚本 `scripts/collect.py` 仍可以用 **GitHub Actions** 跑（任何 GitHub 账号都行），因为它只调 GitHub Search API。
-
-### 在 GitHub 仓库设置 Secrets
+### 2. Secrets
 
 仓库 → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**：
 
-| Secret 名称 | 值 |
-|------------|-----|
-| `GH_TOKEN` | GitHub Personal Access Token（`public_repo` 权限） |
-| `WEBHOOK_URL` | `https://你的域名.edgeone.app/api/webhook/collect` |
-| `WEBHOOK_SECRET` | 与 EdgeOne Pages 项目里的 `WEBHOOK_SECRET` 相同的值 |
-
-### 手动触发第一次采集
-
-仓库 → **Actions** → **Daily Collect** → **Run workflow** → **Run workflow**
-
-采集完成后，去 Admin 后台审核项目。
-
-> 也可以把 `scripts/collect.py` 挪到一台服务器用 cron 跑，不依赖 GitHub Actions。
+| Secret | 值 | 用于 |
+|--------|-----|------|
+| `EDGEONE_API_TOKEN` | EdgeOne API Token（步骤三.2） | deploy.yml |
+| `GH_TOKEN` | GitHub PAT（`public_repo` 权限） | collect.yml |
+| `WEBHOOK_URL` | `https://你的域名.edgeone.app/api/webhook/collect` | collect.yml |
+| `WEBHOOK_SECRET` | 同 EdgeOne 环境变量里的值 | collect.yml |
 
 ---
 
-## 七、首批内容上线
+## 五、部署
 
-1. 访问 `https://你的域名/admin`，登录
-2. 查看待审核队列（按 auto_score 降序排列）
-3. 点击项目 → 填写中文描述、选择行业/场景、填部署命令
-4. 点击 **通过发布**
-5. 重复，审核 20-50 个高质量项目后站点即有内容
+### 自动部署
 
----
+`git push origin main` 触发 `.github/workflows/deploy.yml`：
 
-## 八、后续维护
+1. Checkout 代码
+2. `npm ci` 安装依赖
+3. `npm run build` 构建（用 dummy `DATABASE_URL`，真实 URL 在 EdgeOne 运行时注入）
+4. `npx edgeone deploy` 部署到 EdgeOne Pages
 
-### 日常更新
-- 每日凌晨 2 点（UTC）GitHub Actions 自动采集（如启用），新项目进入待审核队列
-- 定期登录 Admin 审核即可
+### 手动部署
 
-### 重新部署
-推送代码到 Gitee 仓库的 `main` 分支，EdgeOne Pages 自动触发构建部署：
+GitHub → **Actions** → **Deploy to EdgeOne Pages** → **Run workflow**。
 
-```bash
-git add .
-git commit -m "fix: ..."
-git push origin main
-```
+### 验证
 
-### 回滚
-EdgeOne Pages 控制台 → 项目 → **Deployments** → 选历史版本 → **Rollback**
+部署完成后访问 EdgeOne 域名：
 
-### 手动触发同步 stars
-```bash
-curl -X POST https://你的域名/api/webhook/sync-stats \
-  -H "x-webhook-signature: <hmac签名>" \
-  -H "Content-Type: application/json" \
-  -d '{}'
-```
+- [ ] 首页显示 8 个行业
+- [ ] `/sitemap.xml` 有内容
+- [ ] `/admin` 跳转到登录页，用 `ADMIN_PASSWORD` 登录成功
+- [ ] 待审核列表为空（还没采集）
 
 ---
 
-## 九、环境变量汇总
+## 六、数据采集（GitHub Actions 定时任务）
+
+`.github/workflows/collect.yml` 每天 **UTC 02:00**（北京时间 10:00）自动跑 `scripts/collect.py`。
+
+### 手动触发
+
+GitHub → **Actions** → **Daily Collect** → **Run workflow**。
+
+### 验证
+
+跑完后去 Supabase → **Table Editor** → `pending_queue` 表看新行。
+
+采集到的新项目不会自动上线，需在 `/admin` 审核。
+
+---
+
+## 七、环境变量汇总
 
 | 变量 | 设置位置 | 说明 |
 |------|---------|------|
-| `DATABASE_URL` | EdgeOne Pages + `.env.local` | PostgreSQL 连接串（公网可访问） |
-| `ADMIN_PASSWORD` | EdgeOne Pages + `.env.local` | Admin 登录密码 |
-| `ADMIN_SECRET` | EdgeOne Pages + `.env.local` | HttpOnly cookie 值 |
-| `WEBHOOK_SECRET` | EdgeOne Pages + GitHub Actions Secrets | HMAC 密钥，两处必须相同 |
-| `NEXT_PUBLIC_BASE_URL` | EdgeOne Pages + `.env.local` | 生产域名 |
-| `EDGEONE_API_TOKEN` | Gitee Go Secrets | CI 部署用 |
-| `EDGEONE_PROJECT_NAME` | Gitee Go Secrets（值固定为 `openhub`） | EdgeOne 项目名 |
+| `DATABASE_URL` | EdgeOne + `.env.local` | Supabase 连接串（端口 6543） |
+| `ADMIN_PASSWORD` | EdgeOne + `.env.local` | Admin 登录密码 |
+| `ADMIN_SECRET` | EdgeOne + `.env.local` | HttpOnly cookie 值 |
+| `WEBHOOK_SECRET` | EdgeOne + GitHub Secrets + `.env.local` | HMAC 密钥，**三处必须相同** |
+| `NEXT_PUBLIC_BASE_URL` | EdgeOne + `.env.local` | 生产域名 |
+| `EDGEONE_API_TOKEN` | GitHub Secrets | EdgeOne API 部署用 |
 | `GH_TOKEN` | GitHub Secrets | 采集脚本用 GitHub API |
 | `WEBHOOK_URL` | GitHub Secrets | 采集脚本推送地址 |
+
+---
+
+## 八、回滚
+
+### 代码回滚
+
+GitHub → 仓库 → **Commits** → 选历史 commit → **Revert** → push → 自动部署。
+
+### 数据库回滚
+
+Supabase → Project Settings → **Database** → **Backups**（免费层保留 7 天）→ 选时间点恢复。
+
+### EdgeOne 部署回滚
+
+EdgeOne 控制台 → 项目 → **Deployments** → 选历史版本 → **Rollback**。
+
+---
+
+## 九、故障排查
+
+| 症状 | 原因 | 解决 |
+|------|------|------|
+| `npm run dev` 报 `ECONNREFUSED` | `.env.local` 的 `DATABASE_URL` 错 | 检查密码、端口 6543 |
+| 首页 500 + `SELF_SIGNED_CERT` | SSL 配置开了 `rejectUnauthorized: true` | 改成 `false`（Supabase AWS RDS CA 自签） |
+| 部署成功但首页空白 | EdgeOne 环境变量没设 `DATABASE_URL` | 控制台 → Environment Variables |
+| `pending_queue` 一直空 | `WEBHOOK_SECRET` 两边不一致 | 检查 GitHub Secret 和 EdgeOne 环境变量 |
+| GitHub Actions 失败 `EDGEONE_API_TOKEN` | Secret 未配置 | 配完手动 Re-run |
