@@ -155,10 +155,10 @@ export async function getRecentProjects(
   const { rows } = await client.query<ProjectRow>(
     `SELECT * FROM projects
      WHERE status = 'published'
-       AND published_at >= (NOW() - ($1 || ' days')::interval)
+       AND published_at >= (NOW() - make_interval(days => $1::int))::text
      ORDER BY published_at DESC
      LIMIT $2`,
-    [String(days), limit]
+    [days, limit]
   )
   return rows.map(parseProject)
 }
