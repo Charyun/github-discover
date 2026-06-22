@@ -3,21 +3,37 @@ name: Deploy to EdgeOne Pages
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-edgeone
+  cancel-in-progress: false
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      EDGEONE_PROJECT_NAME: openhub
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+          cache: 'npm'
+
       - name: Install dependencies
-        run: npm install --legacy-peer-deps
+        run: npm ci --prefer-offline --no-audit
+
       - name: Build
+        env:
+          # Dummy URL so Next.js static analysis doesn't fail at build time.
+          # Real DATABASE_URL is read at request time from EdgeOne env vars.
+          DATABASE_URL: postgresql://placeholder:placeholder@127.0.0.1:5432/placeholder
         run: npm run build
-      - name: Deploy
-        run: npx edgeone deploy
+
+      - name: Deploy to EdgeOne
         env:
           EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
-          EDGEONE_PROJECT_NAME: openhub
+        run: npx edgeone deploy
