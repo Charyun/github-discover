@@ -3,12 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "edgeone dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint",
-    "deploy": "edgeone deploy",
-    "preview": "edgeone deploy --preview",
+    "dev": "node ./node_modules/next/dist/bin/next dev",
+    "build": "node ./node_modules/next/dist/bin/next build",
+    "start": "node ./node_modules/next/dist/bin/next start",
+    "lint": "node ./node_modules/next/dist/bin/next lint",
+    "deploy": "node ./node_modules/edgeone/edgeone-dist/cli.js deploy",
+    "preview": "node ./node_modules/edgeone/edgeone-dist/cli.js deploy --preview",
     "test": "vitest run",
     "test:watch": "vitest"
   },
